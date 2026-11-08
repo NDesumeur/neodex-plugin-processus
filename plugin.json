@@ -1,7 +1,7 @@
 {
   "id": "neodex.processus",
   "name": "Processus",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "author": "NDesumeur",
   "description": "Un gestionnaire des tâches simple : les programmes regroupés par nom avec leur processeur et leur mémoire, actualisés toutes les 2 secondes, filtre et tri, fermeture forcée comme « Fin de tâche » (programmes de Windows protégés). Pour chaque plugin de NeoDex : processeur, mémoire, données téléchargées, place sur le disque, et un bouton pour le décharger.",
   "icon": "icon.png",
