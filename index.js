@@ -1,7 +1,7 @@
 // Processus : ton appli d'origine (HTML et code inchangés), livrée en plugin.
 // Ses données sont dans le dossier du plugin, que NeoDex sauvegarde (synchro cloud et sauvegardes) ; à la première ouverture elle reprend ce que tu avais dans NeoDex.
 // Elle tourne dans le bac à sable de NeoDex, avec ses outils d'interface (ctx.host) et seulement les autorisations de son plugin.json.
-const HTML = "<div class=\"appWrap\">\n      <div class=\"agHead\"><span class=\"label\">Processus</span><span class=\"hint\" id=\"prInfo\"></span></div>\n      <div class=\"row\"><input class=\"f\" id=\"prFilter\" placeholder=\"Filtrer…\" spellcheck=\"false\" style=\"flex:1\"><select class=\"f\" id=\"prSort\" style=\"width:220px\"><option value=\"cpu\">Trier : processeur</option><option value=\"mem\">Trier : mémoire</option><option value=\"name\">Trier : nom</option></select></div>\n      <div class=\"sysCard px\"><div class=\"prRow head\"><span></span><span>Programme</span><span>Processeur</span><span>Mémoire</span><span></span></div><div id=\"prList\"></div></div>\n      <div class=\"hint\">« Fermer » force la fermeture, comme « Fin de tâche » dans le Gestionnaire des tâches. Les programmes indispensables à Windows sont protégés.</div>\n    </div>";
+const HTML = "<div class=\"appWrap\">\n      <div class=\"agHead\"><span class=\"label\">Processus</span><span class=\"hint\" id=\"prInfo\"></span></div>\n      <div class=\"row\"><input class=\"f\" id=\"prFilter\" placeholder=\"Filtrer…\" spellcheck=\"false\" style=\"flex:1\"><select class=\"f\" id=\"prSort\" style=\"width:220px\"><option value=\"cpu\">Trier : processeur</option><option value=\"mem\">Trier : mémoire</option><option value=\"name\">Trier : nom</option></select></div>\n      <div class=\"sysCard px\" id=\"prPlugCard\" hidden><span class=\"label\">Plugins de NeoDex</span><div class=\"prRow head\"><span></span><span>Plugin</span><span>Processeur</span><span>Mémoire</span><span></span></div><div id=\"prPlugins\"></div></div>\n      <div class=\"sysCard px\"><div class=\"prRow head\"><span></span><span>Programme</span><span>Processeur</span><span>Mémoire</span><span></span></div><div id=\"prList\"></div></div>\n      <div class=\"hint\">« Fermer » force la fermeture, comme « Fin de tâche » dans le Gestionnaire des tâches. Les programmes indispensables à Windows sont protégés.</div>\n    </div>";
 /*CSS-MOVED*/ const CSS = `.prRow{display:grid;grid-template-columns:24px 1fr 100px 100px 90px;gap:12px;align-items:center;padding:6px 4px;font-size:15px;border-bottom:1px solid rgba(255,255,255,.05)}
 .prRow img{width:20px;height:20px;object-fit:contain}
 .prRow .tn{color:#fff;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -9,9 +9,11 @@ const HTML = "<div class=\"appWrap\">\n      <div class=\"agHead\"><span class=\
 .prRow .v{text-align:right;color:var(--lilac)}
 .prRow .v.hot{color:var(--pink)}
 .prRow .btn{height:30px;font-size:13px;padding:0 10px}
+.prDot{width:10px;height:10px;margin:5px;background:var(--muted)} .prDot.on{background:var(--pink)}
 .prRow.head{font:7px var(--title);letter-spacing:1px;color:var(--muted)}
 .prRow.head span:nth-child(3),.prRow.head span:nth-child(4){text-align:right}
 #prList{max-height:62vh;overflow-y:auto}
+#prPlugins{max-height:38vh;overflow-y:auto}
 `;  // le style de ce plugin (il utilise les variables du thème de NeoDex)
 export default async function (ctx) {
   const view = ctx.view;
@@ -39,6 +41,7 @@ async function prOpen() {
   for (const p of list) { const k = p.name.toLowerCase(); if (!groups.has(k)) groups.set(k, {name: p.name, procs: [], cpu: 0, mem: 0, title: '', path: '', protected: false}); const gr = groups.get(k); gr.procs.push(p); gr.cpu += p.cpu; gr.mem += p.mem; gr.title ||= p.title; gr.path ||= p.path; gr.protected ||= p.protected; }
   const rows = [...groups.values()].filter(gr => !q || (gr.name + ' ' + gr.title).toLowerCase().includes(q)).sort(prSort === 'mem' ? (a, b) => b.mem - a.mem : prSort === 'name' ? (a, b) => a.name.localeCompare(b.name, 'fr') : (a, b) => b.cpu - a.cpu || b.mem - a.mem);
   const cpu = [...groups.values()].reduce((s, gr) => s + gr.cpu, 0);
+  prPlugins(q);
   $('prInfo').textContent = list.length + ' processus · ' + groups.size + ' programmes · processeur ' + Math.round(cpu) + ' %';  // no memory total: shared memory would be counted several times
   $('prList').replaceChildren(...rows.slice(0, 150).map(gr => {
     const r = el('div', 'prRow'), ic = el('img'), n = el('div', 'tn'), x = el('button', 'btn px', 'Fermer');
@@ -52,6 +55,24 @@ async function prOpen() {
       prOpen();
     };
     r.append(ic, n, el('span', 'v' + (gr.cpu > 25 ? ' hot' : ''), gr.cpu.toFixed(1).replace('.', ',') + ' %'), el('span', 'v', mo(gr.mem)), x);
+    return r;
+  }));
+}
+// the plugins of NeoDex: each one runs in a process of its own (memory, processor), plus what it downloaded since NeoDex started and its place on the disk
+async function prPlugins(q) {
+  let use; try { use = await neo.pluginsUsage(); } catch { return; }  // an older NeoDex: no such list, the card stays hidden
+  const list = use.plugins;
+  $('prPlugCard').hidden = false;
+  const rows = list.filter(p => !q || p.name.toLowerCase().includes(q)).sort(prSort === 'mem' ? (a, b) => b.mem - a.mem : prSort === 'name' ? (a, b) => a.name.localeCompare(b.name, 'fr') : (a, b) => b.cpu - a.cpu || b.running - a.running || b.mem - a.mem);
+  // the plugins opened together share one process: its memory and processor, once
+  const sharedRows = use.shared.map(s => { const r = el('div', 'prRow'), n = el('div', 'tn'); n.append('Plugins ouverts (processus partagé)', el('small', '', s.plugins + ' plugins dans le même processus de Chromium')); r.append(el('i', 'prDot on'), n, el('span', 'v' + (s.cpu > 25 ? ' hot' : ''), s.cpu.toFixed(1).replace('.', ',') + ' %'), el('span', 'v', mo(s.mem)), el('span')); return r; });
+  $('prPlugins').replaceChildren(...sharedRows, ...rows.map(p => {
+    const r = el('div', 'prRow'), n = el('div', 'tn'), x = el('button', 'btn px', 'Arrêter'), dot = el('i', 'prDot' + (p.running ? ' on' : ''));
+    const net = p.net.requests ? mo(p.net.bytes) + ' téléchargés (' + p.net.requests + ' requête' + (p.net.requests > 1 ? 's' : '') + ')' : 'pas de réseau';
+    n.append(p.name, el('small', '', (p.running ? (p.where === 'principal' ? 'tourne dans NeoDex' : 'ouvert') : 'arrêté') + ' · ' + net + ' · disque ' + mo(p.disk)));
+    x.disabled = p.where !== 'cadre'; x.title = p.where === 'cadre' ? 'Le décharger : il libère sa mémoire et repart quand tu l\'ouvres' : p.running ? 'Il tourne dans NeoDex lui-même : désactive-le dans NeoStore pour l\'arrêter' : 'Déjà arrêté';
+    x.onclick = async () => { try { await neo.pluginStop(p.id); toast(p.name + ' arrêté'); } catch (e) { toast(e.message, true); } prOpen(); };
+    r.append(dot, n, el('span', 'v' + (p.cpu > 25 ? ' hot' : ''), p.mem ? p.cpu.toFixed(1).replace('.', ',') + ' %' : p.shared ? 'partagé' : '—'), el('span', 'v', p.mem ? mo(p.mem) : p.shared ? 'partagé' : '—'), x);
     return r;
   }));
 }
