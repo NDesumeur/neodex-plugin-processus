@@ -10,6 +10,7 @@
   "neobase": ">=4.0.0",
   "type": "app",
   "category": "Système",
+  "compatibility": ["windows"],
   "syncMode": "aucune",
   "syncInfo": "Rien n'est synchronisé.",
   "mobile": false,
