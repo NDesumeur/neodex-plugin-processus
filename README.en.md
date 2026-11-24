@@ -4,6 +4,10 @@ A simple task manager inside NeoDex: the programs running on your PC, grouped by
 
 *Version française : [README.md](README.md)*
 
+## Every process explained (new in 1.2.0)
+
+A plain sentence under each program: what is part of Windows and must not be closed, what is safe, drivers, and fake Windows names to have checked. « Hide Windows » box.
+
 ## Programs
 
 - Each row groups all the processes of one program (for example all of a browser's), with the **processor** used (in %) and the **memory** (in MB or GB).
@@ -31,3 +35,14 @@ Nothing is synced: the plugin keeps no data.
 In NeoDex: **NeoStore → Discover → Processus → Install**.
 
 Building a plugin: see the [NeoDex SDK](https://github.com/NDesumeur/neodex-sdk).
+
+## Every process explained (1.2.0)
+
+Under each program’s name, a sentence says what it does, with a tag:
+
+- **WINDOWS · do not close**: a part of Windows (svchost, csrss, lsass, dwm…). Many svchost processes are normal.
+- **WINDOWS · safe, it restarts**: for example Explorer or Start menu search.
+- **DRIVER**: graphics card, sound, USB.
+- **CHECK IT**: a Windows name started outside the Windows folder, or a program started from a temporary folder. Have your antivirus scan the file.
+
+For an unknown program, the file path stays shown. The **Hide Windows** box keeps only your programs. The filter also searches the explanations.

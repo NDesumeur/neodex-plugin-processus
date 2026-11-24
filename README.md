@@ -4,6 +4,10 @@ Un gestionnaire des tâches simple dans NeoDex : les programmes qui tournent sur
 
 *English version: [README.en.md](README.en.md)*
 
+## Chaque processus expliqué (nouveau en 1.2.0)
+
+Une phrase claire sous chaque programme : ce qui fait partie de Windows et ne doit pas être fermé, ce qui est sans danger, les pilotes, et les faux noms de Windows à faire vérifier. Case « Cacher Windows ».
+
 ## Les programmes
 
 - Chaque ligne regroupe tous les processus d'un même programme (par exemple tous ceux d'un navigateur), avec le **processeur** utilisé (en %) et la **mémoire** (en Mo ou Go).
@@ -31,3 +35,14 @@ Rien n'est synchronisé : le plugin ne garde aucune donnée.
 Dans NeoDex : **NeoStore → À découvrir → Processus → Installer**.
 
 Développer un plugin : voir le [SDK NeoDex](https://github.com/NDesumeur/neodex-sdk).
+
+## Chaque processus expliqué (1.2.0)
+
+Sous le nom de chaque programme, une phrase dit ce qu’il fait, avec une étiquette :
+
+- **WINDOWS · ne pas fermer** : une partie de Windows (svchost, csrss, lsass, dwm…). Beaucoup de svchost, c’est normal.
+- **WINDOWS · sans danger, il se relance** : par exemple l’Explorateur ou la recherche du menu Démarrer.
+- **PILOTE** : carte graphique, son, USB.
+- **À VÉRIFIER** : un nom de Windows lancé hors du dossier de Windows, ou un programme lancé depuis un dossier temporaire. Fais analyser le fichier par l’antivirus.
+
+Pour un programme inconnu, le chemin du fichier reste affiché. La case **Cacher Windows** ne garde que tes programmes. Le filtre cherche aussi dans les explications.
